@@ -1,0 +1,85 @@
+[package]
+name = "claviron-dns"
+version = "0.2.0-alpha.25.1"
+publish = true
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/claviron/dns"
+homepage = "https://github.com/claviron/dns"
+description = "Authoritative DNS and managed zone serving for Claviron"
+documentation = "https://docs.rs/claviron-dns"
+keywords = ["dns", "doh", "claviron"]
+categories = ["network-programming"]
+edition = "2024"
+autotests = false
+include = ["src/**", "Cargo.toml", "README.md", "LICENSE-*"]
+
+[features]
+default = ["server"]
+# PostgreSQL persistence and LISTEN/NOTIFY are explicit, never implied by server.
+postgres = ["service", "claviron/postgres"]
+sqlite = ["service", "sqlx/sqlite", "claviron/sqlite", "claviron/orbit"]
+# Bind this service's authoritative snapshot as the upstream resolver.
+upstream = ["service", "claviron/upstream"]
+metrics = ["service", "claviron/metrics"]
+# `service` — DnsProvider + ConfigProvider + Handler + Snapshot. The
+# read API consumed by both the UDP listener and the DoH HTTP bridge.
+# DoH-only deployments take this without the listener.
+service = [
+    "dep:claviron",
+    "dep:tokio",
+    "dep:async-trait",
+    "dep:arc-swap",
+    "dep:sqlx",
+    "dep:thiserror",
+    "dep:base64ct",
+    # TSIG for zone transfers and NOTIFY; aws-lc, as the rest of Claviron.
+    "hickory-proto/dnssec-aws-lc-rs",
+]
+# `server` — adds DnsServer (Runnable) + UDP/53 accept loop on top of
+# `service`. The listener primitive comes through the Claviron facade.
+server = [
+    "service",
+]
+# `doh` — DNS-over-HTTPS (RFC 8484) standalone Routable. Binds one
+# configured canonical hostname to `/dns-query` through Claviron's
+# vhost registry. Pulls in axum/http + bytes.
+doh = [
+    "service",
+    "claviron/edge",
+    "claviron/axum",
+    "claviron/tls",
+    "dep:axum",
+    "dep:http",
+    "dep:bytes",
+]
+
+[dependencies]
+claviron = { version = "0.2.0-alpha.25", default-features = false, optional = true, features = ["server", "db", "resolver"] }
+
+# Always-on DNS protocol and data-shape dependencies.
+hickory-proto = { version = "0.26", features = ["serde"] }
+serde = { version = "1", features = ["derive", "rc"] }
+tracing = "0.1"
+
+# `service`-feature deps (provider lifecycle).
+async-trait = { version = "0.1", optional = true }
+arc-swap = { version = "1.9", optional = true }
+sqlx = { version = "0.9", optional = true, features = ["runtime-tokio", "postgres", "uuid", "time"] }
+thiserror = { version = "2.0", optional = true }
+
+# `server`-feature deps (UDP listener only).
+tokio = { version = "1", optional = true, features = ["io-util", "macros", "net", "rt", "sync", "time"] }
+base64ct = { version = "1.8", optional = true, features = ["alloc"] }
+
+# `doh`-feature deps (standalone Axum endpoint).
+axum = { version = "0.8", optional = true }
+http = { version = "1.5", optional = true }
+bytes = { version = "1.11", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt", "sync", "time"] }
+serde_yaml = "0.9"
+
+[[test]]
+name = "management_postgres"
+required-features = ["postgres"]
