@@ -1,6 +1,6 @@
 [package]
 name = "claviron-dns"
-version = "0.2.0-alpha.25.1"
+version = "0.2.0-alpha.26"
 publish = true
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/claviron/dns"
@@ -54,7 +54,7 @@ doh = [
 ]
 
 [dependencies]
-claviron = { version = "0.2.0-alpha.25", default-features = false, optional = true, features = ["server", "db", "resolver"] }
+claviron = { version = "0.2.0-alpha.26", path = "../../claviron", default-features = false, optional = true, features = ["server", "db", "resolver"] }
 
 # Always-on DNS protocol and data-shape dependencies.
 hickory-proto = { version = "0.26", features = ["serde"] }
